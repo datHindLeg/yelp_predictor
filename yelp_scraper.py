@@ -4,7 +4,6 @@
 import urllib2
 from bs4 import BeautifulSoup
 import re
-from threading import Thread
 import csv
 import time
 import datetime
@@ -21,7 +20,7 @@ def check_url_exists(ur):
 # returns a list of lists, each sublist being a page of reviews of a restaurant
 def get_urls():
     # below 5 pages of reviews, standard
-    #urls=['http://www.yelp.com/biz/chicos-pizza-san-francisco']
+    urls=['http://www.yelp.com/biz/chicos-pizza-san-francisco']
     # below url has no yelp inspections on site
     #urls=['http://www.yelp.com/biz/ocean-pearl-restaurant-san-francisco']
     #urls=['http://www.yelp.com/biz/quickly-san-francisco-12']
@@ -29,7 +28,7 @@ def get_urls():
     #urls=['http://www.yelp.com/biz/state-bird-provisions-san-francisco']
 
     #below is mix of 100 and lesser scores
-    urls=['http://www.yelp.com/biz/lite-bite-san-francisco']
+    #urls=['http://www.yelp.com/biz/lite-bite-san-francisco']
     all_urls = []
     for item in urls:
         if check_url_exists(item + '?sort_by=date_desc') == False:
@@ -52,36 +51,72 @@ def get_urls():
     print 'Master list ready...'
     return all_urls
 
-# takes a url and scrapes attributes we want from the html, writes to a csv
-def scrape(ur, filer, iattrib):
-    html = urllib2.urlopen(ur).read()
-    soup = BeautifulSoup(html)
-    title = soup.find('h1',itemprop="name")
-    reviews = soup.findAll('p',itemprop='description')
-    ratings = soup.findAll('meta', {"itemprop":"ratingValue"})
-    dates = soup.findAll('meta', {"itemprop":"datePublished"})
-    passport_stats = soup.findAll('ul', {"class":"user-passport-stats"})
+# takes a url and scrapes attributes we want from the html, writes to csv
+def scrape(urls, filer, filer_real,iattrib):
+    # each item in param_map is a list, where each item is  [INSPEC#, NEW_DATE, OLD_DATE, [6_PARAMS]]
+    param_map = []
 
-    category = soup.find('meta',{"property":"og:description"})['content'].encode("utf-8").strip(' \t\n\r')
+    # item here is (DATE, [6 PARAMS] )
+    # list is ordered, so first item in the list is the newest DATE - inspection
+    p = 0
+    while p < len(iattrib):
+	if p == len(iattrib) - 1:
+	    param_map.append( [p, iattrib[p][0] , str(datetime.date(1900,1,1)), iattrib[p][1] ] )
+	else:
+	    param_map.append( [p, iattrib[p][0] , iattrib[p+1][0], iattrib[p][1] ] )
+	p += 1
 
-    price_category = soup.find('dd',{"class":"nowrap price-description"}).text.encode('utf-8').strip(' \t\n\r')
+    # full_map is the final, each key in full_map is the numbered inspection, value is [ [6 PARAMS], REVIEW_CORPUS, RATING_AVG, review_count ]
+    full_map = {}
 
-    #for yelp inspection section
+    unknown_map = {}
+    unknown_map[-1] = [ param_map[0][3], '', 0, 0]
 
+    # initiliaze dict
+    for item in param_map:
+	full_map[item[0]] = [item[3], '', 0 , 0]
 
-    name = title.text.encode("utf-8").strip(' \t\n\r')
-    total_rating = float( ratings[0]['content'] )
-    i = 0
-    while (i < len(reviews)):
-        if passport_stats[i].find('li', {"class":"is-elite"}) == None:
-            elite_status = 'No'
-        else:
-            elite_status = 'Yes'
-        rating = float( ratings[i+1]['content'] )
-        date = dates[i]['content'] 
-        review_text = reviews[i].text.encode("utf-8").strip(' \t\n\r')
-        filer.writerow([name,total_rating,category,price_category,elite_status,rating,date,review_text] + iattrib)
-        i += 1
+    review_count = 0
+    for ur in urls:
+        html = urllib2.urlopen(ur).read()
+	soup = BeautifulSoup(html)
+	title = soup.find('h1',itemprop="name")
+	reviews = soup.findAll('p',itemprop='description')
+        ratings = soup.findAll('meta', {"itemprop":"ratingValue"})
+        dates = soup.findAll('meta', {"itemprop":"datePublished"})
+        
+        category = soup.find('meta',{"property":"og:description"})['content'].encode("utf-8").strip(' \t\n\r')
+
+	price_category = soup.find('dd',{"class":"nowrap price-description"}).text.encode('utf-8').strip(' \t\n\r')
+
+	name = title.text.encode("utf-8").strip(' \t\n\r')
+	total_rating = float( ratings[0]['content'] )
+
+	i = 0
+	while (i < len(reviews)):
+	    rating = float( ratings[i+1]['content'] )
+	    date = dates[i]['content'] 
+	    review_text = reviews[i].text.encode("utf-8").strip(' \t\n\r')
+            flag = True
+	    for item in param_map:
+                # this is the unknown data, no labels cuz no inspection!
+                if flag and date > item[1]:
+		    unknown_map[-1][3] += 1
+		    unknown_map[-1][1] = unknown_map[-1][1] + ' | ' + review_text
+		    unknown_map[-1][2] += rating
+                    flag = False
+		if date < item[1] and date >= item[2]:
+		    full_map[item[0]][3] += 1
+		    full_map[item[0]][1] = full_map[item[0]][1] + ' | ' + review_text
+		    full_map[item[0]][2] += rating 
+	    i += 1
+            review_count += 1
+
+    for key,val in full_map.iteritems():
+        filer.writerow( [name + str(key),total_rating,category,price_category,review_count,key,val[2] / float(val[3]),val[1]] + val[0] ) 
+
+    filer_real.writerow( [name,total_rating,category,price_category,review_count,-1,unknown_map[-1][2] / float(unknown_map[-1][3]),unknown_map[-1][1]] ) 
+
 
 # scrapes the yelp inspection page for each restaurant, returns a list of attributes for scrape() to write to csv
 # the reason this isn't performed in scrape() is so a GET request isn't sent for every suburl, only once per restaurant
@@ -118,14 +153,23 @@ def scrape_inspection(ur):
             first_inspec_vio_count += 1
             recent_inspec_vio = recent_inspec_vio + '|' + violation.text.encode("utf-8").strip(' \t\n\r')
 
-    temp.append(number_inspections)
+    veridct = ""
+    if int(recent_inspec_score.text) < 86:
+        verdict = "WARNING: needs inspection"
+    else:
+        verdict = "GOOD: no inspection needed"
 
-    temp.append(int(recent_inspec_score.text))
-    temp.append(first_inspec_vio_count)
-    temp.append(recent_inspec_rd)
-    temp.append(recent_inspec_type)
-    temp.append(recent_inspec_vio)
+    # for the most recent inspection(different format than the rest)
+    temp.append((recent_inspec_rd,
+                [number_inspections, 
+                 int(recent_inspec_score.text), 
+                 first_inspec_vio_count, 
+                 recent_inspec_type, 
+                 recent_inspec_vio,
+                 verdict])
+                )
 
+    # for all other inspections
     k = 0
     table = soup.find("table", {"id":"inspections-table"})
     date_wrapper = table.findAll("td",{"class":"violations text-center"})
@@ -155,42 +199,46 @@ def scrape_inspection(ur):
                 viol = viol + '|' + violation.text.encode("utf-8").strip(' \t\n\r')
        
 
-        temp.append(score)
-        temp.append(vio_count)
-        temp.append(datec)
-        temp.append(inspec_type)
-        temp.append(viol)
+        veridct = ""
+        if int(recent_inspec_score.text) < 86:
+            verdict = "WARNING: needs inspection"
+        else:
+            verdict = "GOOD: no inspection needed"
+            
+        temp.append((datec, 
+                     [number_inspections, 
+                      score,
+                      vio_count,
+                      inspec_type,
+                      viol,
+                      verdict])
+                     )
         k += 1
 
+    # temp is a list of tuples, where each object is (date, [6 PARAMS] )
     return temp
 
 # iteratres through a list of urls, and deeper into suburls, each suburl is a page of reviews
 def main():
     f = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_yelp.csv", "w"))
-    f.writerow(["name","total_rating","category","price_category","elite_status","rating","date","review_text", 
-                "number_inspections",
-                "recent1_inspec_score","recent1_number_violations","recent1_inspec_date","recent1_inspec_type","recent1_inspec_vio",
-                "recent2_inspec_score","recent2_number_violations","recent2_inspec_date","recent2_inspec_type","recent2_inspec_vio",
-                "recent3_inspec_score","recent3_number_violations","recent3_inspec_date","recent3_inspec_type","recent3_inspec_vio",
-                "recent4_inspec_score","recent4_number_violations","recent4_inspec_date","recent4_inspec_type","recent4_inspec_vio",
-                "recent5_inspec_score","recent5_number_violations","recent5_inspec_date","recent5_inspec_type","recent5_inspec_vio",
-                "recent6_inspec_score","recent6_number_violations","recent6_inspec_date","recent6_inspec_type","recent6_inspec_vio",
-                "recent7_inspec_score","recent7_number_violations","recent7_inspec_date","recent7_inspec_type","recent7_inspec_vio",
-                "recent8_inspec_score","recent8_number_violations","recent8_inspec_date","recent8_inspec_type","recent8_inspec_vio",
-                "recent9_inspec_score","recent9_number_violations","recent9_inspec_date","recent9_inspec_type","recent9_inspec_vio",
-                "recent10_inspec_score","recent10_number_violations","recent10_inspec_date","recent10_inspec_type","recent10_inspec_vio",
-                "recent11_inspec_score","recent11_number_violations","recent11_inspec_date","recent11_inspec_type","recent11_inspec_vio",
-                ])
+    fbad = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_rejects.csv", "w"))
+    freal = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_unknown.csv", "w"))
+    f.writerow(["name","total_rating","category","price_category","number_reviews","inspec_period","period_rating","review_text", 
+                "number_inspections","health_score","number_violations","inspec_type","inspec_vio","verdict"])
+    freal.writerow(["name","total_rating","category","price_category","number_reviews","inspec_period","period_rating","review_text", 
+                "number_inspections","health_score","number_violations","inspec_type","inspec_vio","verdict"])
     for items in get_urls():
         inter = items[0].split('?', 1)[0] 
         inspection_url = inter.replace('biz', 'inspections')
         if check_url_exists(inspection_url) == True:
             inspectors = scrape_inspection(inspection_url)
+            scrape(items, f, freal, inspectors)
         else:
-            # if there is no health ratings on yelp, leave blank
-            inspectors = ['','','','','']
-        for subitem in items:
-            scrape(subitem, f, inspectors)
+            # if there is no health ratings on yelp, skip the restaurant entirely
+            # write rejections to csv
+            fbad.writerow("rejects")
+            fbad.writerow(items[0])
+            continue
 
 if __name__ == "__main__":
     main()
