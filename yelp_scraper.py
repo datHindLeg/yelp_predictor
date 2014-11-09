@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
+### Outputs 3 csv files:
+###   dataset_yelp: Our dataset that we will split into training and validation
+###   dataset_unknown: Our test dataset (includes review_text that were AFTER last review period, so we have no label!
+###   dataset_rejects: Yelp restaurants that for some reason or other did not have health scores on site. We do not include in our main dataset.
+
 import urllib2
 from bs4 import BeautifulSoup
 import re
@@ -20,17 +25,24 @@ def check_url_exists(ur):
 # returns a list of lists, each sublist being a page of reviews of a restaurant
 def get_urls():
     # below 5 pages of reviews, standard
-    urls=['http://www.yelp.com/biz/chicos-pizza-san-francisco']
+    #urls=['http://www.yelp.com/biz/chicos-pizza-san-francisco']
     # below url has no yelp inspections on site
     #urls=['http://www.yelp.com/biz/ocean-pearl-restaurant-san-francisco']
     #urls=['http://www.yelp.com/biz/quickly-san-francisco-12']
     #below url has 100 score
-    #urls=['http://www.yelp.com/biz/state-bird-provisions-san-francisco']
+    urls=['http://www.yelp.com/biz/state-bird-provisions-san-francisco']
 
     #below is mix of 100 and lesser scores
     #urls=['http://www.yelp.com/biz/lite-bite-san-francisco']
+
+    #urls=['http://www.yelp.com/biz/chicos-pizza-san-francisco', 'http://www.yelp.com/biz/state-bird-provisions-san-francisco',
+    #        'http://www.yelp.com/biz/rickybobby-san-francisco', 'http://www.yelp.com/biz/kitchen-story-san-francisco']
+    #        'http://www.yelp.com/biz/v-105-san-francisco', 'http://www.yelp.com/biz/dinosaurs-san-francisco',
+    #        'http://www.yelp.com/biz/mau-san-francisco', 'http://www.yelp.com/biz/bar-tartine-san-francisco']
+
     all_urls = []
     for item in urls:
+        print item
         if check_url_exists(item + '?sort_by=date_desc') == False:
             print 'WHAT? Restuarant URL doesnt exist apparently'
             continue
@@ -89,34 +101,36 @@ def scrape(urls, filer, filer_real,iattrib):
 
 	price_category = soup.find('dd',{"class":"nowrap price-description"}).text.encode('utf-8').strip(' \t\n\r')
 
-	name = title.text.encode("utf-8").strip(' \t\n\r')
+	name = title.text.encode("utf-8").strip(' \t\n\r').replace('|',' ')
 	total_rating = float( ratings[0]['content'] )
 
 	i = 0
 	while (i < len(reviews)):
 	    rating = float( ratings[i+1]['content'] )
 	    date = dates[i]['content'] 
-	    review_text = reviews[i].text.encode("utf-8").strip(' \t\n\r')
+	    review_text = reviews[i].text.encode("utf-8").strip(' \t\n\r').replace('|',' ').replace('\n',' ')
             flag = True
 	    for item in param_map:
                 # this is the unknown data, no labels cuz no inspection!
                 if flag and date > item[1]:
 		    unknown_map[-1][3] += 1
-		    unknown_map[-1][1] = unknown_map[-1][1] + ' | ' + review_text
+		    unknown_map[-1][1] = unknown_map[-1][1] + ' ' + review_text
 		    unknown_map[-1][2] += rating
                     flag = False
 		if date < item[1] and date >= item[2]:
 		    full_map[item[0]][3] += 1
-		    full_map[item[0]][1] = full_map[item[0]][1] + ' | ' + review_text
+		    full_map[item[0]][1] = full_map[item[0]][1] + ' ' + review_text
 		    full_map[item[0]][2] += rating 
 	    i += 1
             review_count += 1
 
     for key,val in full_map.iteritems():
-        filer.writerow( [name + str(key),total_rating,category,price_category,review_count,key,val[2] / float(val[3]),val[1]] + val[0] ) 
+        # if it equals 0, that means there were no reviews for that time period... we lost a sample :(
+        if val[3] != 0:
+            filer.writerow( [name + ' ' + str(key),total_rating,category,price_category,review_count,key,val[2] / float(val[3]),val[1]] + val[0] ) 
 
-    filer_real.writerow( [name,total_rating,category,price_category,review_count,-1,unknown_map[-1][2] / float(unknown_map[-1][3]),unknown_map[-1][1]] ) 
-
+    if unknown_map[-1][3] != 0:
+        filer_real.writerow( [name,total_rating,category,price_category,review_count,-1,unknown_map[-1][2] / float(unknown_map[-1][3]),unknown_map[-1][1]] ) 
 
 # scrapes the yelp inspection page for each restaurant, returns a list of attributes for scrape() to write to csv
 # the reason this isn't performed in scrape() is so a GET request isn't sent for every suburl, only once per restaurant
@@ -151,7 +165,7 @@ def scrape_inspection(ur):
         lister = vio.findAll('li')
         for violation in lister:
             first_inspec_vio_count += 1
-            recent_inspec_vio = recent_inspec_vio + '|' + violation.text.encode("utf-8").strip(' \t\n\r')
+            recent_inspec_vio = recent_inspec_vio + ' ' + violation.text.encode("utf-8").strip(' \t\n\r')
 
     veridct = ""
     if int(recent_inspec_score.text) < 86:
@@ -196,7 +210,7 @@ def scrape_inspection(ur):
         else:
             lister = bodies[k+1].find("ul",{"class":"bullet-list-square violations-list"})
             for violation in lister.findAll("li"):
-                viol = viol + '|' + violation.text.encode("utf-8").strip(' \t\n\r')
+                viol = viol + ' ' + violation.text.encode("utf-8").strip(' \t\n\r').replace('|',' ')
        
 
         veridct = ""
@@ -220,9 +234,9 @@ def scrape_inspection(ur):
 
 # iteratres through a list of urls, and deeper into suburls, each suburl is a page of reviews
 def main():
-    f = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_yelp.csv", "w"))
-    fbad = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_rejects.csv", "w"))
-    freal = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_unknown.csv", "w"))
+    f = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_yelp.csv", "w"),delimiter='|')
+    fbad = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_rejects.csv", "w"),delimiter='|')
+    freal = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_unknown.csv", "w"),delimiter='|')
     f.writerow(["name","total_rating","category","price_category","number_reviews","inspec_period","period_rating","review_text", 
                 "number_inspections","health_score","number_violations","inspec_type","inspec_vio","verdict"])
     freal.writerow(["name","total_rating","category","price_category","number_reviews","inspec_period","period_rating","review_text", 
@@ -239,6 +253,8 @@ def main():
             fbad.writerow("rejects")
             fbad.writerow(items[0])
             continue
+        print 'Site done'
+    print 'Operation completed...!'
 
 if __name__ == "__main__":
     main()
