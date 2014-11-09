@@ -1,5 +1,6 @@
 ### Extract features from csv data, namely review_text. 
 ### Then, select important features
+### lastly, perform regression
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,7 +21,6 @@ def main():
     df_test = pd.read_csv("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_unknown.csv",sep='|')
 
     # Load rejects (data we failed to get because yelp had no yelp reviews)
-
     len_rejects = 0
     try:
         df_rejects = pd.read_csv("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_rejects.csv",sep='|')
@@ -33,7 +33,7 @@ def main():
     # Split the data into 80% training, 20% validation (includes random shuffling)
     rows_train = np.random.choice(df.index.values, int(math.floor(len(df.index)*.8)), replace=False)
     df_train = df.ix[rows_train]
-    df.drop(rows_train)
+    df = df.drop(rows_train)
     rows_validation = np.random.choice(df.index.values, len(df.index), replace=False)
     df_validation = df.ix[rows_validation]
 
@@ -49,11 +49,12 @@ def main():
     coefs, rms, variance = linear_regression(model_train_tfidf, df_train_score, model_validation_tfidf, df_validation_score)
 
     # Amount of yelp data that had health scores (which we only used)
-    print '' + floored_percentage(data_retained, 1) + ' of our data set was usable.'
+    print '' + floored_percentage(data_retained, 1) + ' of our data set was usable.\n'
     # The coefficients results for validation set that we got
     for name, coef in zip(df_validation_name, coefs):
         print('%r => %s' % (name, coef))
 
+    print '\n'
     # evaluate mean square error using validation set
     print("Residual sum of squares: %.2f" % rms)
 
