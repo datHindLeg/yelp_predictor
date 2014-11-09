@@ -12,7 +12,13 @@ from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
 
-# do all data frame manipulation here
+
+# *****************************************************************************************************
+# -----------------------------------------------------------------------------------------------------
+# DATA MANIPULATION AND PRINTOUT 
+# -----------------------------------------------------------------------------------------------------
+# *****************************************************************************************************
+
 def main():
     # Load data set (includes both training and validation)
     df = pd.read_csv("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_yelp.csv",sep='|')
@@ -29,7 +35,15 @@ def main():
         pass
 
     data_retained = len(df.index) / float( len_rejects + len(df.index) )
-    
+
+    # Count number of yelp reviews we got total
+    df_number_reviews = df['number_reviews']
+    df_test_number_reviews = df_test['number_reviews']
+    total_reviews = df_number_reviews.sum(axis=1) + df_test_number_reviews.sum(axis=1)
+
+    # Count number of data points (rows we got)
+    total_data_pts = len(df.index) + len(df_test.index)
+
     # Split the data into 80% training, 20% validation (includes random shuffling)
     rows_train = np.random.choice(df.index.values, int(math.floor(len(df.index)*.8)), replace=False)
     df_train = df.ix[rows_train]
@@ -48,6 +62,7 @@ def main():
     model_train_tfidf, model_validation_tfidf = build_feature_extractors(df_train_text, df_validation_text)
     coefs, rms, variance = linear_regression(model_train_tfidf, df_train_score, model_validation_tfidf, df_validation_score)
 
+    print '\nWe collected a total of ' + str(total_reviews) + ' yelp reviews across ' + str(total_data_pts) + ' data points.'
     # Amount of yelp data that had health scores (which we only used)
     print '' + floored_percentage(data_retained, 1) + ' of our data set was usable.\n'
     # The coefficients results for validation set that we got
@@ -77,6 +92,7 @@ def build_feature_extractors(train_text, validation_text):
     X_train_counts = vectorizer_bag.fit_transform(train_text)
     tfidf_transformer = TfidfTransformer()
     X_train_tfidf = tfidf_transformer.fit_transform(X_train_counts)
+    print_features(X_train_tfidf)
 
     # validation set
     Y_validation_counts = vectorizer_bag.transform(validation_text)
@@ -120,7 +136,7 @@ def linear_regression(model_train, train_targets, model_validation, validation_t
 
 # *****************************************************************************************************
 # -----------------------------------------------------------------------------------------------------
-# MISC
+# HELPERS
 # -----------------------------------------------------------------------------------------------------
 # ****************************************************************************************************
 
@@ -135,9 +151,17 @@ def plot_regression(v_model, v_targets):
 
     plt.show()
 
+# Converts decimal to percentage
 def floored_percentage(val, digits):
     val *= 10 ** (digits + 2)
     return '{1:.{0}f}%'.format(digits, math.floor(val) / 10 ** digits)
+
+# Prints features for the model we used
+def print_features(model):
+    try:
+        print model.get_feature_names()
+    except:
+        print 'ERROR: The model you passed in is not in the right format. Try passing a vectorizer'
 
 
 if __name__ == "__main__":
