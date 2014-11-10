@@ -6,12 +6,18 @@
 ###   dataset_unknown: Our test dataset (includes review_text that were AFTER last review period, so we have no label!
 ###   dataset_rejects: Yelp restaurants that for some reason or other did not have health scores on site. We do not include in our main dataset.
 
+import string
 import urllib2
 from bs4 import BeautifulSoup
+import re
 import re
 import csv
 import time
 import datetime
+from nltk.corpus import stopwords
+import nltk
+from whoosh.lang.porter import stem
+
 
 def check_url_exists(ur):
     try:
@@ -26,11 +32,13 @@ def check_url_exists(ur):
 def get_urls():
     # below 5 pages of reviews, standard
     #urls=['http://www.yelp.com/biz/chicos-pizza-san-francisco']
+    # below is a quick test, only 40 reviews
+    urls=['http://www.yelp.com/biz/lucky-ocean-cafe-san-francisco']
     # below url has no yelp inspections on site
     #urls=['http://www.yelp.com/biz/ocean-pearl-restaurant-san-francisco']
     #urls=['http://www.yelp.com/biz/quickly-san-francisco-12']
     #below url has 100 score
-    urls=['http://www.yelp.com/biz/state-bird-provisions-san-francisco']
+    #urls=['http://www.yelp.com/biz/state-bird-provisions-san-francisco']
 
     #below is mix of 100 and lesser scores
     #urls=['http://www.yelp.com/biz/lite-bite-san-francisco']
@@ -108,7 +116,11 @@ def scrape(urls, filer, filer_real,iattrib):
 	while (i < len(reviews)):
 	    rating = float( ratings[i+1]['content'] )
 	    date = dates[i]['content'] 
-	    review_text = reviews[i].text.encode("utf-8").strip(' \t\n\r').replace('|',' ').replace('\n',' ')
+	    review_text = reviews[i].text.encode("utf-8").replace('|',' ').replace('\n',' ').replace('-', ' ').replace('.','. ').replace('  ',' ').strip(' \t\n\r')
+            
+            # feature select from review_text
+            review_text = select_features(review_text)
+
             flag = True
 	    for item in param_map:
                 # this is the unknown data, no labels cuz no inspection!
@@ -131,6 +143,36 @@ def scrape(urls, filer, filer_real,iattrib):
 
     if unknown_map[-1][3] != 0:
         filer_real.writerow( [name,total_rating,category,price_category,review_count,-1,unknown_map[-1][2] / float(unknown_map[-1][3]),unknown_map[-1][1]] ) 
+
+# use 10 feature selection principles from http://cs.brown.edu/courses/csci1951-a/assignments/assignment3/
+# ahead of time so that classifier has to deal with less clutter
+def select_features(text):
+    # 1. lower-case all characters
+    text = text.lower()
+
+    # 2. Strip punctuations
+    text = text.translate(string.maketrans("",""), string.punctuation)
+
+    # 3. Use the stop words list to filter out low value words such as 'the', 'is' and 'on'.
+    # modify stop words, as nlkt includes negatives like 'no' in list, which we want to use with n-gram feature extraction
+    stop = stopwords.words('english')
+    stop.remove('no')
+    stop.remove('not')
+    text = " ".join([i for i in text.split(" ") if i not in stop])
+
+    # 4. Replace two or more occurrences of the same character with two occurrences. i.e. 'exciteddddd' to 'excitedd'
+    text = re.sub(r'(.)\1{2,}', r'\1', text)
+
+    # 5. remove all numeric characters from string
+    text = re.sub("\d+", "", text)
+
+    # 6. Apply stemming using Porter Stemmer
+    #myPorterStemmer = nltk.stem.porter.PorterStemmer()
+    #text =  " ".join([myPorterStemmer.stem(word) for word in text.strip(" ")])
+
+    # 7. TODO: more? 
+    return text
+
 
 # scrapes the yelp inspection page for each restaurant, returns a list of attributes for scrape() to write to csv
 # the reason this isn't performed in scrape() is so a GET request isn't sent for every suburl, only once per restaurant

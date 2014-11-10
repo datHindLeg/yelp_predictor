@@ -1,0 +1,24 @@
+#!/bin/bash
+
+sudo apt-get install csvedit
+sudo apt-get install python-stem
+sudo apt-get install nlkt
+sudo apt-get install python-bs4
+
+# ************************************************************
+# -----------------------------------------------------------
+# IMPORTANT: INSTRUCTIONS ON DOWNLOADIN NLTK STOPWORDS PACKAGE
+# -----------------------------------------------------------
+# ************************************************************
+
+# Enter python interpreter
+# >>> import nlkt
+# >>> nlkt.download() # THIS WILL POP UP A GUI - Authorization HTTP error
+# Change Server index Url to http://nltk.github.com/nltk_data/
+# Hit Enter
+# Go to Corpora tab
+# scroll down to stopwords and download
+# More info here: http://johnlaudun.org/20130126-nltk-stopwords/
+
+
+# note: I found the site http://wordcounttools.com/ very useful
