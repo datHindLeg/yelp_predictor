@@ -1,8 +1,9 @@
 #!/bin/bash
 
+sudo apt-get update
 sudo apt-get install csvedit
 sudo apt-get install python-stem
-sudo apt-get install nlkt
+sudo apt-get install python-nltk
 sudo apt-get install python-bs4
 
 # ************************************************************
