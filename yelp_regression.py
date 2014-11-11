@@ -26,7 +26,7 @@ def main():
     # Load data set (includes test set)
     df_test = pd.read_csv("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_unknown.csv",sep='|')
 
-    # Load rejects (data we failed to get because yelp had no yelp reviews)
+    # Load rejects (data we failed to get because yelp had no health scores)
     len_rejects = 0
     try:
         df_rejects = pd.read_csv("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_rejects.csv",sep='|')
@@ -45,6 +45,7 @@ def main():
     total_data_pts = len(df.index) + len(df_test.index)
 
     # Split the data into 80% training, 20% validation (includes random shuffling)
+    # TODO: PERFORM K FOLDS
     rows_train = np.random.choice(df.index.values, int(math.floor(len(df.index)*.8)), replace=False)
     df_train = df.ix[rows_train]
     df = df.drop(rows_train)
@@ -59,17 +60,19 @@ def main():
     df_validation_text = df_validation['review_text']
     df_validation_score = df_validation['health_score']
 
+    # heavy lifting in these 2 lines
     model_train_tfidf, model_validation_tfidf = build_feature_extractors(df_train_text, df_validation_text)
-    coefs, rms, variance = linear_regression(model_train_tfidf, df_train_score, model_validation_tfidf, df_validation_score)
+    values, rms, variance = linear_regression(model_train_tfidf, df_train_score, model_validation_tfidf, df_validation_score)
 
     print '\nWe collected a total of ' + str(total_reviews) + ' yelp reviews across ' + str(total_data_pts) + ' data points.'
     # Amount of yelp data that had health scores (which we only used)
     print '' + floored_percentage(data_retained, 1) + ' of our data set was usable.\n'
-    # The coefficients results for validation set that we got
-    for name, coef in zip(df_validation_name, coefs):
-        print('%r => %s' % (name, coef))
 
-    print '\n'
+    # The value results for validation set that we got
+    print 'name', 'score\n'
+    for name, value in zip(df_validation_name, values):
+        print name + ' => ' + str(int(math.floor(value))) + '\n'
+
     # evaluate mean square error using validation set
     print("Residual sum of squares: %.2f" % rms)
 
@@ -79,7 +82,7 @@ def main():
 
 # *****************************************************************************************************
 # -----------------------------------------------------------------------------------------------------
-# FEATURE EXTRACITON & SELECTION
+# FEATURE EXTRACTION & SELECTION
 # -----------------------------------------------------------------------------------------------------
 # *****************************************************************************************************
 
@@ -92,7 +95,10 @@ def build_feature_extractors(train_text, validation_text):
     X_train_counts = vectorizer_bag.fit_transform(train_text)
     tfidf_transformer = TfidfTransformer()
     X_train_tfidf = tfidf_transformer.fit_transform(X_train_counts)
-    print_features(X_train_tfidf)
+
+    # DEBUG: find out what features are being selected
+    #print_features(X_train_tfidf)
+    #print_features(vectorizer_bag)
 
     # validation set
     Y_validation_counts = vectorizer_bag.transform(validation_text)
@@ -122,14 +128,14 @@ def build_feature_extractors(train_text, validation_text):
 
 # test linear regression first
 # later test ridge, randomforestregressor, regularized regression
-# returns (coefficients, residual sum of squares, variance)
+# returns (values, diff, residual sum of squares, variance)
 def linear_regression(model_train, train_targets, model_validation, validation_targets):
     regr = linear_model.LinearRegression()
 
     # train the model
     regr.fit(model_train, train_targets)
 
-    return (regr.coef_, np.mean((regr.predict(model_validation) - validation_targets) ** 2), 
+    return (regr.predict(model_validation), np.mean((regr.predict(model_validation) - validation_targets) ** 2), 
             regr.score(model_validation, validation_targets))
 
 
