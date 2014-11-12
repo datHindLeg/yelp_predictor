@@ -63,7 +63,7 @@ def main():
 
     # heavy lifting in these 2 lines
     model_train_tfidf, model_validation_tfidf = build_feature_extractors(df_train_text, df_validation_text)
-    values, rms, variance = linear_regression(model_train_tfidf, df_train_score, model_validation_tfidf, df_validation_score)
+    values, rms, variance, accuracy, accuracy4 = linear_regression(model_train_tfidf, df_train_score, model_validation_tfidf, df_validation_score)
 
     print '\nWe collected a total of ' + str(total_reviews) + ' yelp reviews across ' + str(total_data_pts) + ' data points.'
     # Amount of yelp data that had health scores (which we only used)
@@ -80,6 +80,12 @@ def main():
     # Explained variance score: 1 is perfect prediction
     print('Variance score: %.2f' % math.fabs(variance))
 
+    # Accuracy of model
+    print 'Accuracy, measured with integers (no decimals): ' + floored_percentage(accuracy, 2)
+
+    # Accuracy of model within deviation of 5 from correction (e.g. if score is 80, we would be accurate if we predicted in range of (76,84) - inclusive
+    print 'Accuracy, measured with integers (no decimals): ' + floored_percentage(accuracy4, 2)
+
 
 # *****************************************************************************************************
 # -----------------------------------------------------------------------------------------------------
@@ -87,7 +93,6 @@ def main():
 # -----------------------------------------------------------------------------------------------------
 # *****************************************************************************************************
 
-# TODO: returns bag of words model, in tuple (train, validation)
 def build_feature_extractors(train_text, validation_text):
 
     # 1. starting with a simple bag of words model
@@ -102,6 +107,7 @@ def build_feature_extractors(train_text, validation_text):
 
     # 4. TODO: dependency parsing with a fast DP like maltparser.
 
+
     X_train_counts = vectorizer.fit_transform(train_text)
 
     tfidf_transformer = TfidfTransformer()
@@ -113,7 +119,9 @@ def build_feature_extractors(train_text, validation_text):
 
     # DEBUG: find out what features are being selected
     #print_features(X_train_tfidf)
-    #print_features(vectorizer)
+    #idf = tfidf_transformer.idf_
+    #print dict(zip(tfidf_transformer.get_feature_names(), idf))
+    #print tfidf_transformer
 
     return X_train_tfidf, Y_validation_tfidf
 
@@ -133,8 +141,14 @@ def linear_regression(model_train, train_targets, model_validation, validation_t
     # train the model
     regr.fit(model_train, train_targets)
 
-    return (regr.predict(model_validation), np.mean((regr.predict(model_validation) - validation_targets) ** 2), 
-            regr.score(model_validation, validation_targets))
+    accuracy = np.mean(np.floor(regr.predict(model_validation)) == np.floor(validation_targets.as_matrix())) 
+    rmse = np.mean( (regr.predict(model_validation) - validation_targets.as_matrix()) ** 2 ) 
+    variance = regr.score(regr.predict(model_validation),validation_targets.as_matrix()) 
+    lower = np.floor(regr.predict(model_validation)) >= (np.floor( validation_targets.as_matrix() - 4))
+    upper = np.floor(regr.predict(model_validation)) <= (np.floor( 4 + validation_targets.as_matrix()))
+    accuracy4 = np.mean( np.logical_and(lower,upper))
+
+    return (regr.predict(model_validation), rmse, variance, accuracy, accuracy4)
 
 def ridge_regression(model_train, train_targets, model_validation, validation_targets):
     regr = linear_model.Ridge(alpha=1.0)
@@ -142,8 +156,14 @@ def ridge_regression(model_train, train_targets, model_validation, validation_ta
     # train the model
     regr.fit(model_train, train_targets)
 
-    return (regr.predict(model_validation), np.mean((regr.predict(model_validation) - validation_targets) ** 2), 
-            regr.score(model_validation, validation_targets))
+    accuracy = np.mean(np.floor(regr.predict(model_validation)) == np.floor(validation_targets.as_matrix())) 
+    rmse = np.mean( (regr.predict(model_validation) - validation_targets.as_matrix()) ** 2 ) 
+    variance = regr.score(regr.predict(model_validation),validation_targets.as_matrix()) 
+    lower = np.floor(regr.predict(model_validation)) >= (np.floor( validation_targets.as_matrix() - 4))
+    upper = np.floor(regr.predict(model_validation)) <= (np.floor( 4 + validation_targets.as_matrix()))
+    accuracy4 = np.mean( np.logical_and(lower,upper))
+
+    return (regr.predict(model_validation), rmse, variance, accuracy, accuracy4)
 
 # TODO: doesn't work now
 def random_forest_regression(model_train, train_targets, model_validation, validation_targets):
@@ -152,9 +172,9 @@ def random_forest_regression(model_train, train_targets, model_validation, valid
     # train the model
     regr.fit(model_train.toarray(), train_targets.toarray())
 
+    accuracy = np.mean(np.floor(regr.predict(model_validation)) == np.floor(validation_targets.as_matrix())) 
     return (regr.predict(model_validation), np.mean((regr.predict(model_validation) - validation_targets) ** 2), 
-            regr.score(model_validation, validation_targets))
-
+            regr.score(model_validation, validation_targets), accuracy, accuracy4)
 
 
 # *****************************************************************************************************

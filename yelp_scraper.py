@@ -43,16 +43,24 @@ def get_urls(csv_rejects):
     #urls=['http://www.yelp.com/biz/lite-bite-san-francisco']
 
     #below is restaurant with no reviews
-    urls=['http://www.yelp.com/biz/greenlid-studiomix-san-francisco']
+    #urls=['http://www.yelp.com/biz/greenlid-studiomix-san-francisco']
 
     #below is restaurant with no inspec socre
     #urls=['http://www.yelp.com/biz/blue-c-sushi-san-francisco']
+
+    # one inspection only (no table)
+    #urls=['http://www.yelp.com/biz/causwells-san-francisco-5']
 
     #urls=['http://www.yelp.com/biz/chicos-pizza-san-francisco', 'http://www.yelp.com/biz/state-bird-provisions-san-francisco',
     #        'http://www.yelp.com/biz/blue-c-sushi-san-francisco', 'http://www.yelp.com/biz/greenlid-studiomix-san-francisco',
     #        'http://www.yelp.com/biz/rickybobby-san-francisco', 'http://www.yelp.com/biz/kitchen-story-san-francisco',
     #        'http://www.yelp.com/biz/v-105-san-francisco', 'http://www.yelp.com/biz/dinosaurs-san-francisco',
-    #        'http://www.yelp.com/biz/mau-san-francisco', 'http://www.yelp.com/biz/bar-tartine-san-francisco']
+    #        'http://www.yelp.com/biz/mau-san-francisco', 'http://www.yelp.com/biz/bar-tartine-san-francisco',
+    #        'http://www.yelp.com/biz/zero-zero-san-francisco','http://www.yelp.com/biz/lolinda-san-francisco',
+    #        'http://www.yelp.com/biz/straw-san-francisco','http://www.yelp.com/biz/causwells-san-francisco-5']
+
+    #ftesturls = open("/home/datascience/FINAL_PROJECT/yelp_predictor/url_list.txt", "r")
+    #urls= ftesturls.read().split('\n'
 
     all_urls = []
     for item in urls:
@@ -242,67 +250,54 @@ def scrape_inspection(ur):
             first_inspec_vio_count += 1
             recent_inspec_vio = recent_inspec_vio + ' ' + violation.text.encode("utf-8").strip(' \t\n\r')
 
-    veridct = ""
-    if int(recent_inspec_score.text) < 86:
-        verdict = "WARNING: needs inspection"
-    else:
-        verdict = "GOOD: no inspection needed"
-
     # for the most recent inspection(different format than the rest)
     temp.append((recent_inspec_rd,
                 [number_inspections, 
                  int(recent_inspec_score.text), 
                  first_inspec_vio_count, 
                  recent_inspec_type, 
-                 recent_inspec_vio,
-                 verdict])
+                 recent_inspec_vio])
                 )
 
     # for all other inspections
     k = 0
     table = soup.find("table", {"id":"inspections-table"})
-    date_wrapper = table.findAll("td",{"class":"violations text-center"})
-    score_wrapper = table.findAll("td",{"class":"text-center"})
-    bodies = table.findAll("tr")
-    while k < number_inspections - 1:
-        score = int( bodies[k+1].findAll("td")[4].text.encode("utf-8").strip(' \t\n\r') )
+    # there was only one inspection
+    if table:
+        date_wrapper = table.findAll("td",{"class":"violations text-center"})
+        score_wrapper = table.findAll("td",{"class":"text-center"})
+        bodies = table.findAll("tr")
+        while k < number_inspections - 1:
+            score = int( bodies[k+1].findAll("td")[4].text.encode("utf-8").strip(' \t\n\r') )
 
-        inspec_type = bodies[k+1].findAll("td")[1].text.encode("utf-8").strip(' \t\n\r')
+            inspec_type = bodies[k+1].findAll("td")[1].text.encode("utf-8").strip(' \t\n\r')
 
-        #datea = date_wrapper[k].find("b").text.encode('utf-8').strip(' \t\n\r')
-        datea = bodies[k+1].findAll("td")[0].text.encode("utf-8").strip(' \t\n\r')
-        dateb = time.strptime(datea.replace(",",""), "%B %d %Y")
-        datec = str(datetime.datetime(dateb[0], dateb[1], dateb[2])).split()[0]
+            #datea = date_wrapper[k].find("b").text.encode('utf-8').strip(' \t\n\r')
+            datea = bodies[k+1].findAll("td")[0].text.encode("utf-8").strip(' \t\n\r')
+            dateb = time.strptime(datea.replace(",",""), "%B %d %Y")
+            datec = str(datetime.datetime(dateb[0], dateb[1], dateb[2])).split()[0]
 
-        vio_count = 0
-        rata = date_wrapper[k].find("span",{"class":"violations-count"})
-        if rata != None:
-            vio_count = int( date_wrapper[k].find("span",{"class":"violations-count"}).text )
+            vio_count = 0
+            rata = date_wrapper[k].find("span",{"class":"violations-count"})
+            if rata != None:
+                vio_count = int( date_wrapper[k].find("span",{"class":"violations-count"}).text )
 
-        viol = ''
-        if  vio_count == 0:
-            viol = 'This inspection has no violations.'
-        else:
-            lister = bodies[k+1].find("ul",{"class":"bullet-list-square violations-list"})
-            for violation in lister.findAll("li"):
-                viol = viol + ' ' + violation.text.encode("utf-8").strip(' \t\n\r').replace('|',' ')
+            viol = ''
+            if  vio_count == 0:
+                viol = 'This inspection has no violations.'
+            else:
+                lister = bodies[k+1].find("ul",{"class":"bullet-list-square violations-list"})
+                for violation in lister.findAll("li"):
+                    viol = viol + ' ' + violation.text.encode("utf-8").strip(' \t\n\r').replace('|',' ')
        
-
-        veridct = ""
-        if int(recent_inspec_score.text) < 86:
-            verdict = "WARNING: needs inspection"
-        else:
-            verdict = "GOOD: no inspection needed"
-            
-        temp.append((datec, 
-                     [number_inspections, 
-                      score,
-                      vio_count,
-                      inspec_type,
-                      viol,
-                      verdict])
-                     )
-        k += 1
+            temp.append((datec, 
+                        [number_inspections, 
+                            score,
+                            vio_count,
+                            inspec_type,
+                            viol])
+                        )
+            k += 1
 
     # temp is a list of tuples, where each object is (date, [6 PARAMS] )
     return temp
