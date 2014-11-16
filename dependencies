@@ -5,6 +5,9 @@ sudo apt-get install csvedit
 sudo apt-get install python-stem
 sudo apt-get install python-nltk
 sudo apt-get install python-bs4
+pip install -U textblob
+python -m textblob.download_corpora
+pip install -U nltk
 
 # ************************************************************
 # -----------------------------------------------------------

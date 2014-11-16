@@ -59,6 +59,12 @@ def get_urls(csv_rejects):
     #        'http://www.yelp.com/biz/zero-zero-san-francisco','http://www.yelp.com/biz/lolinda-san-francisco',
     #        'http://www.yelp.com/biz/straw-san-francisco','http://www.yelp.com/biz/causwells-san-francisco-5']
 
+    urls=['http://www.yelp.com/biz/zero-zero-san-francisco','http://www.yelp.com/biz/l-ardoise-bistro-san-francisco',
+            'http://www.yelp.com/biz/grubbin-san-francisco','http://www.yelp.com/biz/wooly-pig-cafe-san-francisco',
+            'http://www.yelp.com/biz/plow-san-francisco','http://www.yelp.com/biz/marcellas-lasagneria-san-francisco',
+            'http://www.yelp.com/biz/deli-board-san-francisco','http://www.yelp.com/biz/ty-sandwich-san-francisco',
+            'http://www.yelp.com/biz/v-105-san-francisco']
+
     #ftesturls = open("/home/datascience/FINAL_PROJECT/yelp_predictor/url_list.txt", "r")
     #urls= ftesturls.read().split('\n'
 
