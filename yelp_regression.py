@@ -6,14 +6,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import pandas as pd
-from textblob import TextBlob
+import string
 
+import os
 import nltk
 import re, math, collections, itertools
 import nltk, nltk.classify.util, nltk.metrics
 from nltk.classify import NaiveBayesClassifier
 from nltk.metrics import BigramAssocMeasures
 from nltk.probability import FreqDist, ConditionalFreqDist
+from nltk.corpus import stopwords
 
 from sklearn import datasets, linear_model
 from sklearn import ensemble
@@ -21,9 +23,10 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn import cross_validation
 
 from bokeh.plotting import *
-
 
 # *****************************************************************************************************
 # -----------------------------------------------------------------------------------------------------
@@ -42,7 +45,6 @@ def main():
     # Load rejects (data we failed to get because yelp had no health scores)
     df_rejects = pd.read_csv("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_rejects.csv",sep='|')
 
-
     data_retained, total_reviews, total_data_pts, df_train_name, df_train_text,df_train_period_rating, df_train_score, df_validation_name, df_validation_text, df_validation_period_rating, df_validation_score = load_data(df_training,df_test, df_rejects)
     print_general_metrics(total_reviews,total_data_pts,data_retained)
 
@@ -54,9 +56,8 @@ def main():
     #plot_basic_regr(values[0], values[1])
 
     # heavy lifting in these 2 lines
-    model_train_count, model_validation_count, feature_names = get_features(df_train_text, df_validation_text)
-    values = linear_regression(model_train_count,df_train_score,model_validation_count,df_validation_score, feature_names)
-
+    model_train_count, model_validation_count, feature_names = get_features(df_train_text, df_train_score,df_validation_text,df_validation_score)
+    values = ridge_regression(model_train_count,df_train_score,model_validation_count,df_validation_score, feature_names)
 
     # The value results for validation set that we got
     print '\nname', 'score\n'
@@ -107,38 +108,71 @@ def load_data(train, test, rejects):
 
     return data_retained, total_reviews, total_data_pts, df_train_name, df_train_text, df_train_period_rating, df_train_score, df_validation_name, df_validation_text, df_validation_period_rating, df_validation_score
 
-
-
 # *****************************************************************************************************
 # -----------------------------------------------------------------------------------------------------
 # FEATURE EXTRACTION & SELECTION
 # -----------------------------------------------------------------------------------------------------
 # *****************************************************************************************************
 
-"""
-Features:
-    1. Overall sentiment of review period text
-        a. filter on subjectivity
-    2. Find out which words are associated with inspeciton scores, using NLTK and SciKit (regression)
-"""
-def get_features(train_text, validation_text):
+def get_features(train_text,train_targets,validation_text,validation_targets):
 
-    #vectorizer = CountVectorizer(min_df=1)
+    # TODO: NLP feature selection
+
+    stop = stopwords.words('english')
+    stop.remove('no')
+    stop.remove('not')
+
+    review_corpus_train = ""
+    review_texts_train = train_text.tolist()
+    review_corpus_train = ' '.join(review_texts_train)
+    f = open("/home/datascience/text_pre_nlp.txt","w")
+    f.write(review_corpus_train)
+    f.close()
+
+    feature_df = pd.read_csv('/home/datascience/FINAL_PROJECT/yelp_predictor/out_malt.conll', sep='\t')
+    feature_df.columns = ['index','word','blank','basic_indi','extra_indi','blank2','numba','POS','type','blank3']
+    df_pair = feature_df[['word','basic_indi']]
+    df_pair2 = df_pair[(df_pair['basic_indi'] == 'JJ') | (df_pair['basic_indi'] == 'JJR') | (df_pair['basic_indi'] == 'JJS')]
+    df_adj = df_pair2['word'].str.lower().drop_duplicates()
+
+    # this is actually a set, as duplicates were removed at series level
+    # unique set of adjectives from feature set
+    adjs = df_adj.tolist()
+
+    # filter out non-adjectives from text
+    #train_text.map( lambda text: list(text.split(" ") & adjs) )
+    
+    train_text2 = train_text.str.lower()
+    validation_text2 = validation_text.str.lower()
+
+    #train_text3 = train_text2.map(lambda text: " ".join([x for x in text.split(" ") if x in adjs]))
+    #validation_text3 = validation_text2.map(lambda text: " ".join([x for x in text.split(" ") if x in adjs]))
+
+    train_text3 = train_text2.map(lambda text: " ".join([x for x in text.split(" ") if unicode(x,'utf-8') not in stop]))
+    validation_text3 = validation_text2.map(lambda text: " ".join([x for x in text.split(" ") if unicode(x,'utf-8') not in stop]))
+
+    vectorizer = CountVectorizer(min_df=1)
 
     # Pure bi-gram (only 2 word featuers)
     #vectorizer = CountVectorizer(ngram_range=(2, 2), token_pattern=r'\b\w+\b', min_df=1)
 
     # Bi-gram + single (all 2 word and single combinations)
-    vectorizer = CountVectorizer(ngram_range=(1, 2), token_pattern=r'\b\w+\b', min_df=1)
+    #vectorizer = CountVectorizer(ngram_range=(1, 2), token_pattern=r'\b\w+\b', min_df=1)
 
-    X_train_counts = vectorizer.fit_transform(train_text)
+    X_train_counts = vectorizer.fit_transform(train_text3)
     tfidf_transformer = TfidfTransformer()
     X_train_tfidf = tfidf_transformer.fit_transform(X_train_counts)
 
     # validation set
-    X_validation_counts = vectorizer.transform(validation_text)
+    X_validation_counts = vectorizer.transform(validation_text3)
     X_validation_tfidf = tfidf_transformer.transform(X_validation_counts)
 
+    # TODO:tree-based feature selection
+    #clf = ExtraTreesClassifier()
+    #X_train_tree = clf.fit_transform(train_text, train_targets)
+    #X_validation_tree = clf.transform(validation_text,validation_targets)
+
+    
     """
     # print tfidf scores for each feature
     pairings = []
@@ -161,19 +195,18 @@ def get_features(train_text, validation_text):
 # arguments to regr.fit must be nupmpy matrices (use as_matrix() to convert Pandas sequence into numpy matrix (or scores) before sending)
 # minimizes (sum of (y_predicted - y_actual)^2)
 def linear_regression(train_model, train_targets, validation_model, validation_targets, features):
-    regr = linear_model.LinearRegression()
+    regr = linear_model.LinearRegression(normalize=True)
     regr.fit(train_model, train_targets)
 
     feature_to_coef = {}
     for pairing in zip(features,regr.coef_):
         feature_to_coef[pairing[0]] = pairing[1]
 
-    print '\nFeatures with highest regression coefficient values (positive in order):\n ' + str(sorted(feature_to_coef,key=feature_to_coef.get,reverse=True)[:50]) + '\n'
-
-    print 'Features with lowest regression coefficient values (negative in order):\n ' + str(sorted(feature_to_coef,key=feature_to_coef.get,reverse=False)[:50]) + '\n'
-
+    print '\nmax coef value: ' + str(max(feature_to_coef.itervalues()))
+    print 'min coef value: ' + str(min(feature_to_coef.itervalues()))
+    print '\nFeatures with highest regression coefficient values (positive in order):\n ' + str(sorted(feature_to_coef,key=feature_to_coef.get,reverse=True)[:150]) + '\n'
+    print 'Features with lowest regression coefficient values (negative in order):\n ' + str(sorted(feature_to_coef,key=feature_to_coef.get,reverse=False)[:150]) + '\n'
     print_regression_metrics(regr, validation_model,validation_targets)
-
     return regr.predict(validation_model)
 
 # sets non-informative coefficients to 0
@@ -185,15 +218,17 @@ def lasso_regression(train_model, train_targets, validation_model, validation_ta
     for pairing in zip(features,regr.coef_):
         feature_to_coef[pairing[0]] = pairing[1]
 
-    print '\nFeatures with highest regression coefficient values (positive):\n ' + str(sorted(feature_to_coef,key=feature_to_coef.get,reverse=True)[:50]) + '\n'
-    print 'Features with lowest regression coefficient values (negative):\n ' + str(sorted(feature_to_coef,key=feature_to_coef.get,reverse=False)[:50]) + '\n'
+    print '\nmax coef value: ' + str(max(feature_to_coef.itervalues()))
+    print 'min coef value: ' + str(min(feature_to_coef.itervalues()))
+    print '\nFeatures with highest regression coefficient values (positive):\n ' + str(sorted(feature_to_coef,key=feature_to_coef.get,reverse=True)[:150]) + '\n'
+    print 'Features with lowest regression coefficient values (negative):\n ' + str(sorted(feature_to_coef,key=feature_to_coef.get,reverse=False)[:150]) + '\n'
     print_regression_metrics(regr, validation_model,validation_targets)
     return regr.predict(validation_model)
 
 # regression regularization model, good at elminiating uselss features
 # minimizes (y_predicted - y_actual)^2 + lambda * sum of (abs(coefficient))), where lambda is a parameter
 def SGD_regression(train_model, train_targets, validation_model, validation_targets, features):
-   regr = linear_model.SGDRegressor()
+   regr = linear_model.SGDRegressor(penalty="l2",shuffle=True)
    regr.fit(train_model, train_targets)
    #print_regression_metrics(regr, validation_model,validation_targets)
    
@@ -201,15 +236,27 @@ def SGD_regression(train_model, train_targets, validation_model, validation_targ
    for pairing in zip(features,regr.coef_):
        feature_to_coef[pairing[0]] = pairing[1]
        
-   print '\nFeatures with highest regression coefficient values (positive):\n ' + str(sorted(feature_to_coef,key=feature_to_coef.get,reverse=True)[:50]) + '\n'
-   print 'Features with lowest regression coefficient values (negative):\n ' + str(sorted(feature_to_coef,key=feature_to_coef.get,reverse=False)[:50]) + '\n'
+   print '\nmax coef value: ' + str(max(feature_to_coef.itervalues()))
+   print 'min coef value: ' + str(min(feature_to_coef.itervalues()))
+   print '\nFeatures with highest regression coefficient values (positive):\n ' + str(sorted(feature_to_coef,key=feature_to_coef.get,reverse=True)[:150]) + '\n'
+   print 'Features with lowest regression coefficient values (negative):\n ' + str(sorted(feature_to_coef,key=feature_to_coef.get,reverse=False)[:150]) + '\n'
    print_regression_metrics(regr, validation_model,validation_targets)
    return regr.predict(validation_model)
 
-def ridge_regression(model_train, train_targets, model_validation, validation_targets, features):
-    regr = linear_model.Ridge(alpha=1.0)
-    regr.fit(train_model,train_targets)
-    regr.predict(validation_model)
+# regularized regression model, reduces over-fitting in training the model (using restaurant names as top features, for example)
+def ridge_regression(train_model, train_targets, validation_model, validation_targets, features):
+    regr = linear_model.Ridge(alpha=1.0,normalize=True)
+    regr.fit(train_model, train_targets)
+    feature_to_coef = {}
+    for pairing in zip(features,regr.coef_):
+        feature_to_coef[pairing[0]] = pairing[1]
+
+    print '\nmax coef value: ' + str(max(feature_to_coef.itervalues()))
+    print 'min coef value: ' + str(min(feature_to_coef.itervalues()))
+    print '\nFeatures with highest regression coefficient values (positive in order):\n ' + str(sorted(feature_to_coef,key=feature_to_coef.get,reverse=True)[:150]) + '\n'
+    print 'Features with lowest regression coefficient values (negative in order):\n ' + str(sorted(feature_to_coef,key=feature_to_coef.get,reverse=False)[:150]) + '\n'
+    print_regression_metrics(regr, validation_model,validation_targets)
+    return regr.predict(validation_model)
 
 # TODO: doesn't work now
 def random_forest_regression(model_train, train_targets, model_validation, validation_targets, features):
@@ -241,6 +288,10 @@ def print_regression_metrics(regr, model_validation, validation_targets):
     upper = np.floor(regr.predict(model_validation)) <= (np.floor( 3 + validation_targets))
     accuracy3 = np.mean( np.logical_and(lower,upper))
 
+    lower = np.floor(regr.predict(model_validation)) >= (np.floor( validation_targets - 5))
+    upper = np.floor(regr.predict(model_validation)) <= (np.floor( 5 + validation_targets))
+    accuracy5 = np.mean( np.logical_and(lower,upper))
+
     # evaluate mean square error using validation set
     print("Residual mean squared error (lower=better): %.2f" % rmse)
 
@@ -248,10 +299,13 @@ def print_regression_metrics(regr, model_validation, validation_targets):
     print('Variance score (1 is perfect): %.2f' % math.fabs(variance))
 
     # Accuracy of model
-    print 'Accuracy WITHIN +- 0 range, measured on integer scores: ' + floored_percentage(accuracy, 3)
+    print 'Accuracy WITHIN +- 0 range, measured on integer scores: ' + floored_percentage(accuracy, 2)
 
-    # Accuracy of model within deviation of 5 from correction (e.g. if score is 80, we would be accurate if we predicted in range of (77,83) - inclusive
-    print 'Accuracy WITHIN +- 3 range, measured on integer scores: ' + floored_percentage(accuracy3, 3)
+    # Accuracy of model within deviation of 3 from correction (e.g. if score is 80, we would be accurate if we predicted in range of (77,83) - inclusive
+    print 'Accuracy WITHIN +- 3 range, measured on integer scores: ' + floored_percentage(accuracy3, 2)
+ 
+    # Accuracy of model within deviation of 5 from correction
+    print 'Accuracy WITHIN +- 5 range, measured on integer scores: ' + floored_percentage(accuracy5, 2)
     
 
 # Make scatter plot of regression results, pass in validation model and validation targets
@@ -281,34 +335,40 @@ def plot_basic_regr(coef, intercept):
             title = "Regress yelp review scores on health scores",x_axis_label = "Yelp Review Score",y_axis_label = "Health Score")
     show()
 
+
 if __name__ == "__main__":
     main()
 
+'''
 
-
-    """
-    # Natural Language Parser TextBlob
     # TextBlob() takes in a string, so need to convert panads Series to list, then string corpus
-    review_corpus = ""
-    review_texts = train_text.tolist()
-    for text in review_texts:
-        review_corpus += text
-    blob = TextBlob(unicode(review_corpus, 'utf-8'))
+    review_corpus_train = ""
+    review_texts_train = train_text.tolist()
+    review_corpus_train = ' '.join(review_texts_train)
+    blob_train = TextBlob(unicode(review_corpus_train, 'utf-8'))
+    blob_train.noun_phrases
+
+    review_corpus_val = ""
+    review_texts_val = validation_text.tolist()
+    review_corpus_val = ' '.join(review_texts_val)
+    blob_val = TextBlob(unicode(review_corpus_val, 'utf-8'))
     
     # attempt to spell check sentence, takes way too long
     #blob.correct()
 
     # remove very objective sentences (below 0.2)
-    corpus_subj = ""
-    for sentence.correct() in blob.sentences:
-        if sentence.sentiment.subjectivity > 0.2:
-            corpus_subj += sentence
+    #corpus_subj = ""
+    #for sentence.correct() in blob.sentences:
+    #    if sentence.sentiment.subjectivity > 0.2:
+    #        corpus_subj += sentence
+    #blob_subj = TextBlob(unicode(corpus_subj, 'utf-8'))
 
-    blob_subj = TextBlob(unicode(corpus_subj, 'utf-8'))
     # use polarity as main feature. Polarity can range from -1 to 1 inclusive, -1 is very negative, 1 is very positive
-    polarity = blob_subj.sentiment.polarity
-    print polarity
-    """
+    #polarity = blob_subj.sentiment.polarity
+    #print polarity
+
+'''
+
 
 
 

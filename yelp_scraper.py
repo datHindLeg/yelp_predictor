@@ -16,6 +16,7 @@ import time
 import datetime
 from nltk.corpus import stopwords
 import nltk
+import time
 
 
 def check_url_exists(ur):
@@ -59,14 +60,47 @@ def get_urls(csv_rejects):
     #        'http://www.yelp.com/biz/zero-zero-san-francisco','http://www.yelp.com/biz/lolinda-san-francisco',
     #        'http://www.yelp.com/biz/straw-san-francisco','http://www.yelp.com/biz/causwells-san-francisco-5']
 
-    urls=['http://www.yelp.com/biz/zero-zero-san-francisco','http://www.yelp.com/biz/l-ardoise-bistro-san-francisco',
-            'http://www.yelp.com/biz/grubbin-san-francisco','http://www.yelp.com/biz/wooly-pig-cafe-san-francisco',
-            'http://www.yelp.com/biz/plow-san-francisco','http://www.yelp.com/biz/marcellas-lasagneria-san-francisco',
-            'http://www.yelp.com/biz/deli-board-san-francisco','http://www.yelp.com/biz/ty-sandwich-san-francisco',
-            'http://www.yelp.com/biz/v-105-san-francisco']
+    #urls=['http://www.yelp.com/biz/zero-zero-san-francisco','http://www.yelp.com/biz/l-ardoise-bistro-san-francisco',
+    #        'http://www.yelp.com/biz/grubbin-san-francisco','http://www.yelp.com/biz/wooly-pig-cafe-san-francisco',
+    #        'http://www.yelp.com/biz/plow-san-francisco','http://www.yelp.com/biz/marcellas-lasagneria-san-francisco',
+    #        'http://www.yelp.com/biz/deli-board-san-francisco','http://www.yelp.com/biz/ty-sandwich-san-francisco',
+    #        'http://www.yelp.com/biz/v-105-san-francisco']
 
-    #ftesturls = open("/home/datascience/FINAL_PROJECT/yelp_predictor/url_list.txt", "r")
-    #urls= ftesturls.read().split('\n'
+    # up to page 54 of yelp search for only $ filter, only seleted restaurants with between 10-200 reviews
+    urls=['http://www.yelp.com/biz/pastel-do-brazil-san-francisco-2','http://www.yelp.com/biz/choice-yakiniku-san-francisco','http://www.yelp.com/biz/tacos-club-san-francisco',
+            'http://www.yelp.com/biz/two-sons-sandwiches-san-francisco','http://www.yelp.com/biz/diamond-cafe-san-francisco',
+            'http://www.yelp.com/biz/dragoneats-san-francisco','http://www.yelp.com/biz/front-cafe-san-francisco',
+            'http://www.yelp.com/biz/paulies-pickling-san-francisco','http://www.yelp.com/biz/la-espiga-de-oro-san-francisco',
+            'http://www.yelp.com/biz/pop-up-cafe-san-francisco-4','http://www.yelp.com/biz/cholo-soy-san-francisco',
+            'http://www.yelp.com/biz/jbs-place-san-francisco','http://www.yelp.com/biz/jonas-on-hyde-san-francisco',
+            'http://www.yelp.com/biz/little-heaven-deli-san-francisco','http://www.yelp.com/biz/eleven-o-one-san-francisco',
+            'http://www.yelp.com/biz/the-morning-fix-san-francisco','http://www.yelp.com/biz/cindys-market-san-francisco',
+            'http://www.yelp.com/biz/back-yard-kitchen-san-francisco','http://www.yelp.com/biz/red-chilli-san-francisco',
+            'http://www.yelp.com/biz/taqueria-cazadores-san-francisco-2','http://www.yelp.com/biz/red-sea-market-san-francisco',
+            'http://www.yelp.com/biz/mexico-tipico-san-francisco-2','http://www.yelp.com/biz/pauls-deli-san-francisco',
+            'http://www.yelp.com/biz/pops-sandwich-shop-san-francisco','http://www.yelp.com/biz/fresh-bay-cafe-san-francisco',
+            'http://www.yelp.com/biz/lunch-geek-san-francisco','http://www.yelp.com/biz/clanceys-market-and-deli-san-francisco',
+            'http://www.yelp.com/biz/cole-valley-cafe-san-francisco','http://www.yelp.com/biz/mint-cafe-san-francisco',
+            'http://www.yelp.com/biz/taqueria-castillo-mason-san-francisco','http://www.yelp.com/biz/heung-yuen-restaurant-san-francisco',
+            'http://www.yelp.com/biz/sun-kwong-restaurant-san-francisco','http://www.yelp.com/biz/el-taco-loco-the-original-san-francisco',
+            'http://www.yelp.com/biz/alamo-square-cafe-san-francisco','http://www.yelp.com/biz/sutter-cafe-san-francisco',
+            'http://www.yelp.com/biz/j-and-a-restaurant-san-francisco','http://www.yelp.com/biz/el-paraiso-cafe-san-francisco',
+            'http://www.yelp.com/biz/el-castillito-taqueria-san-francisco','http://www.yelp.com/biz/henrys-cafe-and-deli-san-francisco-2',
+            'http://www.yelp.com/biz/garage-cafe-san-francisco','http://www.yelp.com/biz/el-rancho-grande-san-francisco',
+            'http://www.yelp.com/biz/slider-shack-san-francisco','http://www.yelp.com/biz/fog-lifter-cafe-san-francisco',
+            'http://www.yelp.com/biz/whats-up-dog-san-francisco-12','http://www.yelp.com/biz/le-petitts-kitchen-san-francisco-2',
+            'http://www.yelp.com/biz/grove-street-market-san-francisco','http://www.yelp.com/biz/boudin-sourdough-bakery-and-cafe-san-francisco-16',
+            'http://www.yelp.com/biz/la-paz-restaurant-pupuseria-san-francisco','http://www.yelp.com/biz/la-laguna-taqueria-san-francisco',
+            'http://www.yelp.com/biz/sweet-joannas-cafe-san-francisco-2','http://www.yelp.com/biz/la-quinta-restaurant-san-francisco',
+            'http://www.yelp.com/biz/mura-san-francisco','http://www.yelp.com/biz/the-little-spot-cafe-san-francisco',
+            'http://www.yelp.com/biz/deli-and-san-francisco-5','http://www.yelp.com/biz/el-tepa-taqueria-san-francisco',
+            'http://www.yelp.com/biz/kui-shin-bo-san-francisco-2','http://www.yelp.com/biz/reaction-restaurant-san-francisco-2',
+            'http://www.yelp.com/biz/elsys-restaurant-san-francisco','http://www.yelp.com/biz/bread-and-butter-cafe-san-francisco-2',
+            'http://www.yelp.com/biz/gourmet-kitchen-san-francisco','http://www.yelp.com/biz/hongry-kong-truck-san-francisco'
+            'http://www.yelp.com/biz/peter-ds-san-francisco','http://www.yelp.com/biz/the-hollow-cow-market-san-francisco',
+            'http://www.yelp.com/biz/new-college-hill-market-san-francisco','http://www.yelp.com/biz/jins-cafe-san-francisco',
+            'http://www.yelp.com/biz/sungari-dumpling-house-san-francisco-2']
+
 
     all_urls = []
     for item in urls:
@@ -195,17 +229,17 @@ def scrape(urls, filer, filer_real,iattrib):
 # ahead of time so that classifier has to deal with less clutter
 def select_features(text):
     # 1. lower-case all characters
-    text = text.lower()
+    #text = text.lower()
 
     # 2. Strip punctuations
-    text = text.translate(string.maketrans("",""), string.punctuation)
+    #text = text.translate(string.maketrans("",""), string.punctuation)
 
     # 3. Use the stop words list to filter out low value words such as 'the', 'is' and 'on'.
     # modify stop words, as nlkt includes negatives like 'no' in list, which we want to use with n-gram feature extraction
-    stop = stopwords.words('english')
-    stop.remove('no')
-    stop.remove('not')
-    text = " ".join([i for i in text.split(" ") if i not in stop])
+    #stop = stopwords.words('english')
+    #stop.remove('no')
+    #stop.remove('not')
+    #text = " ".join([i for i in text.split(" ") if i not in stop])
 
     # 4. Replace two or more occurrences of the same character with two occurrences. i.e. 'exciteddddd' to 'excitedd'
     text = re.sub(r'(.)\1{2,}', r'\1', text)
@@ -217,7 +251,6 @@ def select_features(text):
     #myPorterStemmer = nltk.stem.porter.PorterStemmer()
     #text =  " ".join([myPorterStemmer.stem(word) for word in text.strip(" ")])
 
-    # 7. TODO: more? 
     return text
 
 
@@ -318,6 +351,8 @@ def main():
                 "number_inspections","health_score","number_violations","inspec_type","inspec_vio","verdict"])
     freal.writerow(["name","total_rating","category","price_category","number_reviews","inspec_period","period_rating","review_text", 
                 "number_inspections","health_score","number_violations","inspec_type","inspec_vio","verdict"])
+    counter = 1
+    total_restaurants = len(get_urls(fbad))
     for items in get_urls(fbad):
         inter = items[0].split('?', 1)[0] 
         inspection_url = inter.replace('biz', 'inspections')
@@ -328,7 +363,9 @@ def main():
             # if there is no health ratings on yelp, add restaurant to test set
             inspectors = None
             scrape(items, f, freal, inspectors)
-        print 'Site done'
+        print 'Site ' + str(counter) + ' out of ' + str(total_restaurants) + ' done'
+        time.sleep(10)
+        counter += 1
     print 'Operation completed...!'
 
 if __name__ == "__main__":
