@@ -1,0 +1,5 @@
+yum -y update
+yum -y install pip
+pip install nltk
+pip install beautifulsoup4
+pip install html5lib

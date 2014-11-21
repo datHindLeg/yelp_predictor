@@ -14,7 +14,7 @@ import re
 import csv
 import time
 import datetime
-from nltk.corpus import stopwords
+#from nltk.corpus import stopwords
 import nltk
 import time
 
@@ -66,7 +66,14 @@ def get_urls(csv_rejects):
     #        'http://www.yelp.com/biz/deli-board-san-francisco','http://www.yelp.com/biz/ty-sandwich-san-francisco',
     #        'http://www.yelp.com/biz/v-105-san-francisco']
 
+    fileurls = open('/home/datascience/FINAL_PROJECT/yelp_predictor/sean_url.txt', 'r')
+    urls = []
+    for line in fileurls.readlines():
+        urls.append(line.strip(' \n'))
+        urls = urls[0:5]
+
     # up to page 54 of yelp search for only $ filter, only seleted restaurants with between 10-200 reviews
+    """
     urls=['http://www.yelp.com/biz/pastel-do-brazil-san-francisco-2','http://www.yelp.com/biz/choice-yakiniku-san-francisco','http://www.yelp.com/biz/tacos-club-san-francisco',
             'http://www.yelp.com/biz/two-sons-sandwiches-san-francisco','http://www.yelp.com/biz/diamond-cafe-san-francisco',
             'http://www.yelp.com/biz/dragoneats-san-francisco','http://www.yelp.com/biz/front-cafe-san-francisco',
@@ -100,6 +107,7 @@ def get_urls(csv_rejects):
             'http://www.yelp.com/biz/peter-ds-san-francisco','http://www.yelp.com/biz/the-hollow-cow-market-san-francisco',
             'http://www.yelp.com/biz/new-college-hill-market-san-francisco','http://www.yelp.com/biz/jins-cafe-san-francisco',
             'http://www.yelp.com/biz/sungari-dumpling-house-san-francisco-2']
+    """
 
 
     all_urls = []
@@ -130,6 +138,7 @@ def get_urls(csv_rejects):
             counter += 40
             iter += 1
         all_urls.append(temp)
+        time.sleep(3)
     print 'Master list ready...'
     return all_urls
 
@@ -343,10 +352,10 @@ def scrape_inspection(ur):
 
 # iteratres through a list of urls, and deeper into suburls, each suburl is a page of reviews
 def main():
-    f = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_yelp.csv", "w"),delimiter='|')
-    fbad = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_rejects.csv", "w"))
+    f = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_yelp.csv", "a"),delimiter='|')
+    fbad = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_rejects.csv", "a"))
     fbad.writerow(["rejects"])
-    freal = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_unknown.csv", "w"),delimiter='|')
+    freal = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_unknown.csv", "a"),delimiter='|')
     f.writerow(["name","total_rating","category","price_category","number_reviews","inspec_period","period_rating","review_text", 
                 "number_inspections","health_score","number_violations","inspec_type","inspec_vio","verdict"])
     freal.writerow(["name","total_rating","category","price_category","number_reviews","inspec_period","period_rating","review_text", 
@@ -354,6 +363,7 @@ def main():
     counter = 1
     total_restaurants = len(get_urls(fbad))
     for items in get_urls(fbad):
+        time.sleep(4)
         inter = items[0].split('?', 1)[0] 
         inspection_url = inter.replace('biz', 'inspections')
         if check_url_exists(inspection_url) == True:
@@ -364,7 +374,6 @@ def main():
             inspectors = None
             scrape(items, f, freal, inspectors)
         print 'Site ' + str(counter) + ' out of ' + str(total_restaurants) + ' done'
-        time.sleep(10)
         counter += 1
     print 'Operation completed...!'
 
