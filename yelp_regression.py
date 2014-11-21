@@ -132,12 +132,15 @@ def get_features(train_text,train_targets,validation_text,validation_targets):
     feature_df = pd.read_csv('/home/datascience/FINAL_PROJECT/yelp_predictor/out_malt.conll', sep='\t')
     feature_df.columns = ['index','word','blank','basic_indi','extra_indi','blank2','numba','POS','type','blank3']
     df_pair = feature_df[['word','basic_indi']]
-    df_pair2 = df_pair[(df_pair['basic_indi'] == 'JJ') | (df_pair['basic_indi'] == 'JJR') | (df_pair['basic_indi'] == 'JJS')]
+    df_pair2 = df_pair[(df_pair['basic_indi'] == 'JJ') | (df_pair['basic_indi'] == 'JJR') | (df_pair['basic_indi'] == 'JJS') | (df_pair['basic_indi'] == 'RB')]
+    df_pair3 = df_pair[(df_pair['basic_indi'] == 'NN') | (df_pair['basic_indi'] == 'NNS') | (df_pair['basic_indi'] == 'DT')]
     df_adj = df_pair2['word'].str.lower().drop_duplicates()
+    df_nouns = df_pair3['word'].str.lower().drop_duplicates()
 
     # this is actually a set, as duplicates were removed at series level
     # unique set of adjectives from feature set
     adjs = df_adj.tolist()
+    nouns = df_nouns.tolist()
 
     # filter out non-adjectives from text
     #train_text.map( lambda text: list(text.split(" ") & adjs) )
@@ -145,16 +148,16 @@ def get_features(train_text,train_targets,validation_text,validation_targets):
     train_text2 = train_text.str.lower()
     validation_text2 = validation_text.str.lower()
 
-    #train_text3 = train_text2.map(lambda text: " ".join([x for x in text.split(" ") if x in adjs]))
-    #validation_text3 = validation_text2.map(lambda text: " ".join([x for x in text.split(" ") if x in adjs]))
+    train_text3 = train_text2.map(lambda text: " ".join([x for x in text.split(" ") if x in adjs or x in nouns and unicode(x,'utf-8') not in stop]))
+    validation_text3 = validation_text2.map(lambda text: " ".join([x for x in text.split(" ") if x in adjs or x in nouns and unicode(x,'utf-8') not in stop]))
 
-    train_text3 = train_text2.map(lambda text: " ".join([x for x in text.split(" ") if unicode(x,'utf-8') not in stop]))
-    validation_text3 = validation_text2.map(lambda text: " ".join([x for x in text.split(" ") if unicode(x,'utf-8') not in stop]))
+    #train_text3 = train_text2.map(lambda text: " ".join([x for x in text.split(" ") if unicode(x,'utf-8') not in stop]))
+    #validation_text3 = validation_text2.map(lambda text: " ".join([x for x in text.split(" ") if unicode(x,'utf-8') not in stop]))
 
-    vectorizer = CountVectorizer(min_df=1)
+    #vectorizer = CountVectorizer(min_df=1)
 
     # Pure bi-gram (only 2 word featuers)
-    #vectorizer = CountVectorizer(ngram_range=(2, 2), token_pattern=r'\b\w+\b', min_df=1)
+    vectorizer = CountVectorizer(ngram_range=(2, 2), token_pattern=r'\b\w+\b', min_df=1)
 
     # Bi-gram + single (all 2 word and single combinations)
     #vectorizer = CountVectorizer(ngram_range=(1, 2), token_pattern=r'\b\w+\b', min_df=1)
