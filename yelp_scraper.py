@@ -66,12 +66,13 @@ def get_urls(csv_rejects):
     #        'http://www.yelp.com/biz/deli-board-san-francisco','http://www.yelp.com/biz/ty-sandwich-san-francisco',
     #        'http://www.yelp.com/biz/v-105-san-francisco']
 
-    fileurls = open('/home/datascience/FINAL_PROJECT/yelp_predictor/sean_url.txt', 'r')
+    """
+    fileurls = open('/home/jasonmach/project/yelp_predictor/jason_url.txt', 'r')
     urls = []
     for line in fileurls.readlines():
         urls.append(line.strip(' \n'))
         urls = urls[0:5]
-
+    """
     # up to page 54 of yelp search for only $ filter, only seleted restaurants with between 10-200 reviews
     """
     urls=['http://www.yelp.com/biz/pastel-do-brazil-san-francisco-2','http://www.yelp.com/biz/choice-yakiniku-san-francisco','http://www.yelp.com/biz/tacos-club-san-francisco',
@@ -108,8 +109,29 @@ def get_urls(csv_rejects):
             'http://www.yelp.com/biz/new-college-hill-market-san-francisco','http://www.yelp.com/biz/jins-cafe-san-francisco',
             'http://www.yelp.com/biz/sungari-dumpling-house-san-francisco-2']
     """
-
-
+    urls = ['http://www.yelp.com/biz/campton-place-restaurant-san-francisco',
+	'http://www.yelp.com/biz/precita-market-and-deli-san-francisco',
+	'http://www.yelp.com/biz/michael-mina-san-francisco-2',
+	'http://www.yelp.com/biz/jai-yun-san-francisco-2',
+	'http://www.yelp.com/biz/sugar-bowl-bakery-and-restaurant-san-francisco-6',
+	'http://www.yelp.com/biz/asa-sushi-san-francisco-2',
+	'http://www.yelp.com/biz/hana-zen-sushi-and-yakitori-san-francisco-4',
+	'http://www.yelp.com/biz/subway-san-francisco-51',
+	'http://www.yelp.com/biz/baan-thai-house-and-wine-bar-san-francisco-5',
+	'http://www.yelp.com/biz/green-island-restaurant-san-francisco',
+	'http://www.yelp.com/biz/hanuri-san-francisco',
+	'http://www.yelp.com/biz/quickly-san-francisco-14',
+	'http://www.yelp.com/biz/noahs-bagels-san-francisco-3',
+	'http://www.yelp.com/biz/taco-bell-san-francisco-15',
+	'http://www.yelp.com/biz/hai-sun-san-francisco',
+	'http://www.yelp.com/biz/the-matterhorn-swiss-restaurant-san-francisco',
+	'http://www.yelp.com/biz/five-happiness-san-francisco',
+	'http://www.yelp.com/biz/taiwan-restaurant-san-francisco',
+	'http://www.yelp.com/biz/alborz-persian-cuisine-san-francisco',
+	'http://www.yelp.com/biz/happy-garden-san-francisco',
+	'http://www.yelp.com/biz/panda-express-san-francisco-2',
+	'http://www.yelp.com/biz/round-table-pizza-san-francisco-3',
+	'http://www.yelp.com/biz/marina-sushi-bar-san-francisco']
     all_urls = []
     for item in urls:
         print item
@@ -138,7 +160,7 @@ def get_urls(csv_rejects):
             counter += 40
             iter += 1
         all_urls.append(temp)
-        time.sleep(3)
+        time.sleep(20)
     print 'Master list ready...'
     return all_urls
 
@@ -175,7 +197,11 @@ def scrape(urls, filer, filer_real,iattrib):
 	  full_map[item[0]] = [item[3], '', 0 , 0]
 
     review_count = 0
+    x = 0
     for ur in urls:
+	x += 1
+	print ("HIT " + str(x))
+	print ur
         html = urllib2.urlopen(ur).read()
 	soup = BeautifulSoup(html)
 	title = soup.find('h1',itemprop="name")
@@ -352,18 +378,19 @@ def scrape_inspection(ur):
 
 # iteratres through a list of urls, and deeper into suburls, each suburl is a page of reviews
 def main():
-    f = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_yelp.csv", "a"),delimiter='|')
-    fbad = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_rejects.csv", "a"))
+    f = csv.writer(open("/home/jasonmach/project/yelp_predictor/dataset_yelp.csv", "a"),delimiter='|')
+    fbad = csv.writer(open("/home/jasonmach/project/yelp_predictor/dataset_rejects.csv", "a"))
     fbad.writerow(["rejects"])
-    freal = csv.writer(open("/home/datascience/FINAL_PROJECT/yelp_predictor/dataset_unknown.csv", "a"),delimiter='|')
+    freal = csv.writer(open("/home/jasonmach/project/yelp_predictor/dataset_unknown.csv", "a"),delimiter='|')
     f.writerow(["name","total_rating","category","price_category","number_reviews","inspec_period","period_rating","review_text", 
                 "number_inspections","health_score","number_violations","inspec_type","inspec_vio","verdict"])
     freal.writerow(["name","total_rating","category","price_category","number_reviews","inspec_period","period_rating","review_text", 
                 "number_inspections","health_score","number_violations","inspec_type","inspec_vio","verdict"])
     counter = 1
-    total_restaurants = len(get_urls(fbad))
-    for items in get_urls(fbad):
-        time.sleep(4)
+    temp = get_urls(fbad)
+    total_restaurants = len(temp)
+    for items in temp:
+        time.sleep(20)
         inter = items[0].split('?', 1)[0] 
         inspection_url = inter.replace('biz', 'inspections')
         if check_url_exists(inspection_url) == True:
