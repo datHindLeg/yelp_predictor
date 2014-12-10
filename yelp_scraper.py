@@ -109,29 +109,19 @@ def get_urls(csv_rejects):
             'http://www.yelp.com/biz/new-college-hill-market-san-francisco','http://www.yelp.com/biz/jins-cafe-san-francisco',
             'http://www.yelp.com/biz/sungari-dumpling-house-san-francisco-2']
     """
-    urls = ['http://www.yelp.com/biz/campton-place-restaurant-san-francisco',
-	'http://www.yelp.com/biz/precita-market-and-deli-san-francisco',
-	'http://www.yelp.com/biz/michael-mina-san-francisco-2',
-	'http://www.yelp.com/biz/jai-yun-san-francisco-2',
-	'http://www.yelp.com/biz/sugar-bowl-bakery-and-restaurant-san-francisco-6',
-	'http://www.yelp.com/biz/asa-sushi-san-francisco-2',
-	'http://www.yelp.com/biz/hana-zen-sushi-and-yakitori-san-francisco-4',
-	'http://www.yelp.com/biz/subway-san-francisco-51',
-	'http://www.yelp.com/biz/baan-thai-house-and-wine-bar-san-francisco-5',
-	'http://www.yelp.com/biz/green-island-restaurant-san-francisco',
-	'http://www.yelp.com/biz/hanuri-san-francisco',
-	'http://www.yelp.com/biz/quickly-san-francisco-14',
-	'http://www.yelp.com/biz/noahs-bagels-san-francisco-3',
-	'http://www.yelp.com/biz/taco-bell-san-francisco-15',
-	'http://www.yelp.com/biz/hai-sun-san-francisco',
-	'http://www.yelp.com/biz/the-matterhorn-swiss-restaurant-san-francisco',
-	'http://www.yelp.com/biz/five-happiness-san-francisco',
-	'http://www.yelp.com/biz/taiwan-restaurant-san-francisco',
-	'http://www.yelp.com/biz/alborz-persian-cuisine-san-francisco',
-	'http://www.yelp.com/biz/happy-garden-san-francisco',
-	'http://www.yelp.com/biz/panda-express-san-francisco-2',
-	'http://www.yelp.com/biz/round-table-pizza-san-francisco-3',
-	'http://www.yelp.com/biz/marina-sushi-bar-san-francisco']
+    urls = ['http://www.yelp.com/biz/missions-kitchen-san-francisco',
+	'http://www.yelp.com/biz/the-store-on-the-corner-san-francisco',
+	'http://www.yelp.com/biz/cafe-francisco-san-francisco-2',
+	'http://www.yelp.com/biz/milan-pizza-san-francisco',
+	'http://www.yelp.com/biz/the-mayflower-restaurant-san-francisco',
+	'http://www.yelp.com/biz/altena-restaurant-san-francisco',
+	'http://www.yelp.com/biz/great-saigon-restaurant-san-francisco',
+	'http://www.yelp.com/biz/taqueria-mana-san-francisco',
+	'http://www.yelp.com/biz/jt-restaurant-and-catering-san-francisco',
+	'http://www.yelp.com/biz/los-guanacos-san-francisco',
+	'http://www.yelp.com/biz/palacio-latino-san-francisco']
+
+
     all_urls = []
     for item in urls:
         print item
